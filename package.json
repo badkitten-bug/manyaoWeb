@@ -12,7 +12,6 @@
     "postbuild": "echo 'Build completed with version update!'"
   },
   "dependencies": {
-    "@next/font": "^14.2.15",
     "@tensorflow/tfjs-backend-wasm": "^4.22.0",
     "@tensorflow/tfjs-backend-webgl": "^4.22.0",
     "@tensorflow/tfjs-converter": "^4.22.0",

@@ -12,20 +12,21 @@ const nextConfig: NextConfig = {
     return `build-${Date.now()}`;
   },
   
-  // Configurar headers para cache busting
-  async headers() {
-    return [
-      {
-        source: '/_next/static/css/(.*)',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
-          },
-        ],
-      },
-    ];
-  },
+  // Nota: Los headers no funcionan con "output: export" (exportación estática)
+  // Los headers de cache deben configurarse en el servidor web (Apache/Nginx)
+  // async headers() {
+  //   return [
+  //     {
+  //       source: '/_next/static/css/(.*)',
+  //       headers: [
+  //         {
+  //           key: 'Cache-Control',
+  //           value: 'public, max-age=31536000, immutable',
+  //         },
+  //       ],
+  //     },
+  //   ];
+  // },
 };
 
 export default nextConfig;
