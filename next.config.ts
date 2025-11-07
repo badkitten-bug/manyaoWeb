@@ -1,7 +1,11 @@
 import type { NextConfig } from "next";
 
+// En desarrollo, permitir API routes; en producción, exportación estática
+const isDev = process.env.NODE_ENV === 'development';
+
 const nextConfig: NextConfig = {
-  output: 'export',
+  // Solo exportar estáticamente en producción
+  ...(isDev ? {} : { output: 'export' }),
   basePath: '/app',
   assetPrefix: '/app',
   trailingSlash: true,

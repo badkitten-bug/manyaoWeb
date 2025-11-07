@@ -9,7 +9,8 @@ async function postExec(processId: string, params: Param[]) {
   
   // En desarrollo local, usar la API route de Next.js
   // En producción, usar el proxy PHP en cPanel
-  const proxyUrl = isDev ? '/api/exec' : PROXY_PHP_URL;
+  // Con basePath: '/app', la ruta debe incluir el basePath
+  const proxyUrl = isDev ? '/app/api/exec' : PROXY_PHP_URL;
   const payload = isDev 
     ? { process: processId, token: API_KEY, scope: SCOPE, params }
     : { process: processId, params }; // El PHP proxy agrega token y scope automáticamente
