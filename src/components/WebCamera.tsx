@@ -57,6 +57,13 @@ export default function WebCamera({ onCapture, autoCaptureEnabled = true, overla
     }, 1000);
   }, [capture]);
 
+  const takePhotoNow = useCallback(() => {
+    // Cancelar countdown automático si está activo
+    setCountdown(null);
+    // Tomar foto inmediatamente
+    capture();
+  }, [capture]);
+
   useEffect(() => {
     let timerA: number | undefined;
     let timerB: number | undefined;
@@ -108,8 +115,8 @@ export default function WebCamera({ onCapture, autoCaptureEnabled = true, overla
         
         // Autocaptura solo si está habilitada (selfie)
         if (autoCaptureEnabled) {
-          timerA = window.setTimeout(() => setIsGreen(true), 2000);
-          timerB = window.setTimeout(() => startCountdown(), 2000);
+          timerA = window.setTimeout(() => setIsGreen(true), 5000);
+          timerB = window.setTimeout(() => startCountdown(), 5000);
         }
       } catch (e) {
         console.error('camera error', e);
@@ -123,7 +130,9 @@ export default function WebCamera({ onCapture, autoCaptureEnabled = true, overla
       if (timerB) window.clearTimeout(timerB);
 
       if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+        stream.getTracks().forEach(track => {
+          track.stop();
+        });
       }
       
       if (videoEl) {
@@ -168,9 +177,35 @@ export default function WebCamera({ onCapture, autoCaptureEnabled = true, overla
           </div>
         </div>
       ) : (
-        <div className='mt-2 flex gap-2'>
-          <button type='button' className='px-3 py-2 rounded bg-black text-white' onClick={capture}>Tomar foto</button>
-          <span className='text-sm text-gray-500'>{ready ? 'Cámara lista' : 'Iniciando cámara...'}</span>
+        <div className='mt-4 flex flex-col items-center gap-3'>
+          <span className='text-sm text-gray-500'>{ready ? '' : 'Iniciando cámara...'}</span>
+          {ready && autoCaptureEnabled && (
+            <button
+              type='button'
+              onClick={takePhotoNow}
+              disabled={countdown !== null}
+              className='w-full px-6 py-4 rounded-2xl font-bold text-lg transition-all duration-300 border-2 disabled:opacity-50 disabled:cursor-not-allowed'
+              style={{
+                background: countdown !== null ? 'rgba(156, 163, 175, 0.3)' : 'linear-gradient(135deg, #00c896 0%, #00b4d8 100%)',
+                borderColor: countdown !== null ? 'rgba(156, 163, 175, 0.5)' : '#00c896',
+                color: countdown !== null ? 'rgba(156, 163, 175, 0.8)' : '#ffffff'
+              }}
+              onMouseEnter={(e) => {
+                if (countdown === null) {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #00b4d8 0%, #0096c7 100%)';
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (countdown === null) {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #00c896 0%, #00b4d8 100%)';
+                  e.currentTarget.style.transform = 'scale(1)';
+                }
+              }}
+            >
+              📸 Tomar foto
+            </button>
+          )}
         </div>
       )}
     </div>

@@ -1,35 +1,63 @@
-import { API_KEY, SCOPE, PROC_NOTIFY_EVENT, PROC_VALIDATE_DNI_WITH_PHOTO, PROC_CREATE_ADDRESS } from './env';
+import { API_KEY, SCOPE, PROC_NOTIFY_EVENT, PROC_NOTIFY_SIGNATURE, PROC_NOTIFY_SIGNATURE_FREE, PROC_VALIDATE_DNI_WITH_PHOTO, PROC_CREATE_ADDRESS, PROXY_PHP_URL } from './env';
 
 type Param = { name: string; value: string };
 
 async function postExec(processId: string, params: Param[]) {
-  // Proxy dinámico: dev usa /app (con CORS); prod usa PHP local
+  // Proxy dinámico: dev usa Next.js API route; prod usa PHP proxy
   const isBrowser = typeof window !== 'undefined';
   const isDev = isBrowser && (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
-  const basePrefix = isBrowser
-    ? (location.pathname.startsWith('/app')
-        ? '/app'
-        : '')
-    : '';
   
-  // En desarrollo, usar /app que tiene CORS configurado
-  const proxyUrl = isDev ? 'https://manyao.pe/app/api/exec.php' : `${basePrefix}/api/exec.php`;
-  const payload = isDev
+  // En desarrollo local, usar la API route de Next.js
+  // En producción, usar el proxy PHP en cPanel
+  const proxyUrl = isDev ? '/api/exec' : PROXY_PHP_URL;
+  const payload = isDev 
     ? { process: processId, token: API_KEY, scope: SCOPE, params }
-    : { process: processId, params };
+    : { process: processId, params }; // El PHP proxy agrega token y scope automáticamente
 
-  console.log('postExec:', { isDev, proxyUrl, hasToken: !!API_KEY, hasScope: !!SCOPE });
+  console.log('[DEBUG] postExec: Enviando request:', {
+    processId,
+    proxyUrl,
+    isDev,
+    payloadSize: JSON.stringify(payload).length,
+    paramsCount: params.length
+  });
 
   const res = await fetch(proxyUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
+  
+  console.log('[DEBUG] postExec: Respuesta HTTP:', {
+    status: res.status,
+    statusText: res.statusText,
+    ok: res.ok,
+    headers: Object.fromEntries(res.headers.entries())
+  });
+  
   if (!res.ok) {
     const text = await res.text().catch(() => '');
+    console.error('[DEBUG] postExec: Error HTTP:', { status: res.status, text });
     throw new Error(`HTTP ${res.status}: ${text || res.statusText}`);
   }
-  return res.json();
+  
+  const responseText = await res.text();
+  console.log('[DEBUG] postExec: Respuesta texto:', responseText.substring(0, 500) + (responseText.length > 500 ? '...' : ''));
+  
+  try {
+    const responseData = JSON.parse(responseText);
+    console.log('[DEBUG] postExec: JSON parseado exitosamente:', responseData);
+    return responseData;
+  } catch (parseError) {
+    console.error('[DEBUG] postExec: Error parseando JSON:', parseError);
+    // Devolver un objeto de error estructurado
+    return {
+      error: 'invalid_json',
+      http: res.status,
+      rawResponse: responseText,
+      parseError: parseError instanceof Error ? parseError.message : String(parseError)
+    };
+  }
 }
 
 export async function notifyEvent05({ photo, email, dni, f1, address, key }: { photo: string; email: string; dni: string; f1: string; address: string; key: string; }) {
@@ -52,15 +80,80 @@ export async function validateDNIWithPhoto04({ photoFace, photoDNI, email, f1, a
     { name: 'f1', value: f1 },
     { name: 'address', value: address },
   ];
-  console.log('[04] validateDNIWithPhoto → params', { hasFace: !!photoFace, hasDNI: !!photoDNI, email, f1: !!f1, address: address?.slice(0, 8) });
   const resp = await postExec(PROC_VALIDATE_DNI_WITH_PHOTO, params);
-  console.log('[04] validateDNIWithPhoto ← response', resp);
   return resp;
 }
 
 export async function createAddressForWeb(imei: string) {
   const params: Param[] = [ { name: 'imei', value: imei } ];
   return postExec(PROC_CREATE_ADDRESS, params);
+}
+
+export async function notifyEventSignature({ 
+  photo, 
+  email, 
+  dni, 
+  f1, 
+  address, 
+  key, 
+  signature, 
+  signaturevector, 
+  name 
+}: { 
+  photo: string; 
+  email: string; 
+  dni: string; 
+  f1: string; 
+  address: string; 
+  key: string; 
+  signature: string; 
+  signaturevector: string; 
+  name: string; 
+}) {
+  const params: Param[] = [
+    { name: 'photo', value: photo },
+    { name: 'email', value: email },
+    { name: 'dni', value: dni },
+    { name: 'f1', value: f1 },
+    { name: 'address', value: address },
+    { name: 'key', value: key },
+    { name: 'signature', value: signature },
+    { name: 'signaturevector', value: signaturevector },
+    { name: 'name', value: name },
+  ];
+  return postExec(PROC_NOTIFY_SIGNATURE, params);
+}
+
+export async function notifyEventSignatureFree({ 
+  email, 
+  dni, 
+  f1, 
+  address, 
+  key, 
+  signature, 
+  signaturevector, 
+  name 
+}: { 
+  email: string; 
+  dni: string; 
+  f1: string; 
+  address: string; 
+  key: string; 
+  signature: string; 
+  signaturevector: string; 
+  name: string; 
+}) {
+  const params: Param[] = [
+    { name: 'email', value: email },
+    { name: 'dni', value: dni },
+    { name: 'f1', value: f1 },
+    { name: 'address', value: address },
+    { name: 'key', value: key },
+    { name: 'signature', value: signature },
+    { name: 'signaturevector', value: signaturevector },
+    { name: 'name', value: name },
+  ];
+  return postExec(PROC_NOTIFY_SIGNATURE_FREE, params);
 }
 
 

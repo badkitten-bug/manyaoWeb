@@ -1,11 +1,12 @@
 "use client";
-import React from "react";
+import type React from "react";
 
 interface ButtonConfig {
   text: string;
   onClick: () => void;
   disabled?: boolean;
   variant?: 'primary' | 'success' | 'outline-red' | 'secondary';
+  icon?: React.ReactNode;
 }
 
 interface ActionButtonsProps {
@@ -20,7 +21,7 @@ export default function ActionButtons({
   className = "" 
 }: ActionButtonsProps) {
   const getButtonStyles = (variant: string, disabled: boolean) => {
-    const baseStyles = "px-6 py-3.5 rounded-[8px] font-bold text-base transition-colors min-w-[140px]";
+    const baseStyles = "px-6 py-3.5 rounded-[8px] font-bold text-sm transition-colors min-w-[140px] flex items-center justify-center gap-2";
     
     if (disabled) {
       return `${baseStyles} opacity-50 cursor-not-allowed bg-gray-300 text-gray-500`;
@@ -48,6 +49,7 @@ export default function ActionButtons({
         onClick={leftButton.onClick}
         disabled={leftButton.disabled}
       >
+        {leftButton.icon}
         {leftButton.text}
       </button>
       <button
@@ -56,6 +58,7 @@ export default function ActionButtons({
         onClick={rightButton.onClick}
         disabled={rightButton.disabled}
       >
+        {rightButton.icon}
         {rightButton.text}
       </button>
     </div>

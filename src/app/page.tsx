@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { SITE_URL } from '@/lib/env';
 
 export default function Home() {
   return (
@@ -41,11 +42,11 @@ function ClientHome() {
           <div className="text-left bg-gray-50 p-3 rounded border text-xs font-mono text-[#333]">
             <p className="mb-2">• Validación RENIEC: <code>?id=05:dni:clave</code></p>
             <p className="mb-2">• Validación DNI: <code>?id=04:dni:clave</code></p>
-            <p>• Firma Digital: <code>?id=03:dni:clave</code></p>
+            <p>• Firma Electrónica: <code>?id=03:dni:clave</code></p>
           </div>
         </div>
         <a 
-          href="https://manyao.pe/" 
+          href={SITE_URL} 
           className="inline-block px-6 py-3 bg-[#187773] hover:bg-[#165956] text-white font-bold rounded-lg transition-colors"
         >
           Ir a Manyao

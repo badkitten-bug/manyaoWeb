@@ -1,6 +1,5 @@
 "use client";
 import React from "react";
-import Link from "next/link";
 
 interface IntroScreenProps {
   title: string;
@@ -17,7 +16,6 @@ export default function IntroScreen({
   description,
   onStart,
   startButtonText = "Iniciar verificación",
-  cancelHref = "https://manyao.pe/"
 }: IntroScreenProps) {
   return (
     <main className='min-h-dvh flex flex-col items-center justify-center p-5 bg-[#f5f5f5]'>
@@ -29,20 +27,14 @@ export default function IntroScreen({
             <p className='text-sm text-[#888] italic mb-8'>{description}</p>
           )}
         </div>
-        <div className='flex gap-4'>
+        <div className='flex justify-center'>
           <button 
             type='button' 
-            className='flex-1 px-6 py-3.5 rounded-[8px] bg-[#187773] hover:bg-[#165956] text-white font-bold text-base transition-colors' 
+            className='px-8 py-3.5 rounded-[8px] bg-[#187773] hover:bg-[#165956] text-white font-bold text-base transition-colors' 
             onClick={onStart}
           >
             {startButtonText}
           </button>
-          <Link 
-            className='flex-1 px-6 py-3.5 rounded-[8px] border border-gray-300 text-[#333] font-bold text-base text-center transition-colors hover:bg-gray-50' 
-            href={cancelHref}
-          >
-            Cancelar
-          </Link>
         </div>
       </div>
     </main>

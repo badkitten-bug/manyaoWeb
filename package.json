@@ -1,12 +1,15 @@
 {
   "name": "web",
-  "version": "0.1.0",
+  "version": "2025.10.16.1143",
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run version && next build",
+    "build:prod": "npm run version && next build && npm run postbuild",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "version": "node scripts/update-version.js",
+    "postbuild": "echo 'Build completed with version update!'"
   },
   "dependencies": {
     "@next/font": "^14.2.15",

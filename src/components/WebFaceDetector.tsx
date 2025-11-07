@@ -46,7 +46,8 @@ export default function WebFaceDetector() {
 
     return () => {
       if (interval) window.clearInterval(interval);
-      const s = (videoRef.current?.srcObject as unknown as MediaStream | null) || null;
+      const videoElement = videoRef.current;
+      const s = (videoElement?.srcObject as unknown as MediaStream | null) || null;
       const tracks = s?.getTracks() ?? [];
       for (const track of tracks) {
         track.stop();

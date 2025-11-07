@@ -1,6 +1,8 @@
 "use client";
-import React from "react";
-import ActionButtons from "./ActionButtons";
+import { Camera } from "lucide-react";
+import Logo from "./Logo";
+import ProgressIndicator from "./ProgressIndicator";
+import ThemeToggle from "./ThemeToggle";
 
 interface CameraPreviewProps {
   title: string;
@@ -18,8 +20,6 @@ interface CameraPreviewProps {
 }
 
 export default function CameraPreview({
-  title,
-  subtitle,
   imageSrc,
   imageAlt,
   onRetake,
@@ -32,41 +32,102 @@ export default function CameraPreview({
   imageType = 'selfie'
 }: CameraPreviewProps) {
   return (
-    <main className='min-h-dvh flex flex-col items-center justify-center p-5 bg-[#f5f5f5]'>
-      <div className='w-full max-w-md'>
-        <div className='mb-5 text-center'>
-          <h1 className='text-2xl font-bold text-[#333] mb-2'>{title}</h1>
-          <p className='text-base text-[#666]'>{subtitle}</p>
-        </div>
-        <div className='flex flex-col items-center'>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img 
-            src={imageSrc} 
-            alt={imageAlt} 
-            className={`mb-8 rounded-[10px] border-2 border-[#ddd] ${
-              imageType === 'document' 
-                ? 'w-[350px] h-[250px] object-contain' // Para DNI: más ancho, menos alto, mantener proporción
-                : 'w-[300px] h-[400px] object-cover'   // Para selfie: proporción vertical
-            }`}
-          />
+    <main className='min-h-dvh flex flex-col'>
+      <ThemeToggle />
+      
+      <div className='flex-1 flex flex-col items-center pt-0 pb-4 px-4 overflow-y-auto'>
+        {/* Contenedor principal para TODO el contenido */}
+        <div className='w-full max-w-lg backdrop-blur-xl border rounded-3xl px-6 py-3 shadow-xl' style={{backgroundColor: 'var(--card-bg)', borderColor: 'var(--card-border)'}}>
+          <Logo />
+          
+          <ProgressIndicator currentStep={3} totalSteps={4} />
+          
+
+          <div className='mb-8 text-center'>
+            <h1 className='text-2xl md:text-3xl font-bold mb-3' style={{color: 'var(--text-primary)'}}>Revisa tu foto</h1>
+            <p className='text-base md:text-lg leading-relaxed' style={{color: 'var(--text-secondary)'}}>Verifica que tu rostro se vea claramente, caso contrario tome otra foto</p>
+          </div>
+
+          {/* Imagen de preview */}
+          <div className='mb-6 flex justify-center'>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img 
+              src={imageSrc} 
+              alt={imageAlt} 
+              className={`rounded-2xl border-2 shadow-lg ${
+                imageType === 'document' 
+                  ? 'w-[280px] h-[200px] object-contain' // Para DNI: más ancho, menos alto, mantener proporción
+                  : 'w-[240px] h-[320px] object-cover'   // Para selfie: proporción vertical
+              }`}
+              style={{
+                borderColor: 'var(--card-border)'
+              }}
+            />
+          </div>
+
           {showAddressWarning && (
-            <p className='text-sm text-[#f44336] mb-4 text-center'>
-              Inicializando datos (address/f1)… Si persiste, recarga o vuelve a intentar.
-            </p>
+            <div className='mb-6 p-4 rounded-2xl border' style={{
+              backgroundColor: 'rgba(244, 67, 54, 0.1)',
+              borderColor: 'rgba(244, 67, 54, 0.3)'
+            }}>
+              <p className='text-sm text-center font-medium' style={{color: '#f44336'}}>
+                Inicializando datos (address/f1)… Si persiste, recarga o vuelve a intentar.
+              </p>
+            </div>
           )}
-          <ActionButtons
-            leftButton={{
-              text: "Tomar otra",
-              onClick: onRetake,
-              variant: "outline-red"
-            }}
-            rightButton={{
-              text: loading ? loadingText : continueText,
-              onClick: onContinue,
-              disabled: continueDisabled || loading,
-              variant: "success"
-            }}
-          />
+
+          {/* Botones */}
+          <div className="space-y-4 mb-6">
+            <button
+              type='button'
+              onClick={onContinue}
+              disabled={continueDisabled || loading}
+              className='w-full py-4 rounded-2xl font-bold text-lg transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100'
+              style={{
+                background: 'linear-gradient(135deg, #00c896 0%, #00b4d8 100%)',
+                color: 'white'
+              }}
+              onMouseEnter={(e) => {
+                if (!e.currentTarget.disabled) {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #00b4d8 0%, #0096c7 100%)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!e.currentTarget.disabled) {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #00c896 0%, #00b4d8 100%)';
+                }
+              }}
+            >
+              {loading ? loadingText : continueText}
+            </button>
+            
+            <button
+              type='button'
+              onClick={onRetake}
+              className='w-full py-4 rounded-2xl border-2 font-bold text-lg transition-all duration-300 flex items-center justify-center gap-2'
+              style={{
+                borderColor: '#ef4444',
+                color: '#ef4444',
+                backgroundColor: 'var(--card-bg)'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#fef2f2';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--card-bg)';
+              }}
+            >
+              <Camera size={20} />
+              Repetir
+            </button>
+          </div>
+
+          {/* Footer */}
+          <footer className='mt-8 text-center'>
+            <p className='text-xs' style={{color: 'var(--text-muted)'}}>
+              © 2025 <span style={{color: 'var(--text-primary)'}}>Manyao</span>. Todos los derechos reservados.
+            </p>
+          </footer>
         </div>
       </div>
     </main>
