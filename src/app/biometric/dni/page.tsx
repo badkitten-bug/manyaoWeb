@@ -188,7 +188,7 @@ function ClientContent() {
   if (step === 'intro') {
     return (
       <IntroScreen
-        title="Validación DNI selfie"
+        title="Validación DNI con selfie"
         subtitle="Paso 1: toma una selfie. Paso 2: toma una foto de tu DNI. Luego enviaremos ambas para validar."
         onStart={() => setStep('face')}
         startButtonText="Iniciar"
