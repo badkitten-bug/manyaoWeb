@@ -239,6 +239,8 @@ function ClientContent() {
         onCapture={(data) => { setPhoto(data); setStep('face-preview'); }}
         facingMode="user"
         mirror={true}
+        currentStep={1}
+        totalSteps={1}
       />
     );
   }
@@ -256,6 +258,8 @@ function ClientContent() {
         loading={loading}
         showAddressWarning={!address || !f1}
         imageType="selfie"
+        currentStep={1}
+        totalSteps={1}
       />
     );
   }

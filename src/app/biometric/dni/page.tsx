@@ -207,6 +207,8 @@ function ClientContent() {
         autoCaptureEnabled={true}
         overlay="circle"
         mirror={true}
+        currentStep={1}
+        totalSteps={2}
       />
     );
   }
@@ -222,6 +224,8 @@ function ClientContent() {
         onContinue={() => setStep('dni')}
         continueText="Continuar"
         imageType="selfie"
+        currentStep={1}
+        totalSteps={2}
       />
     );
   }
@@ -236,6 +240,8 @@ function ClientContent() {
         facingMode="environment"
         autoCaptureEnabled={false}
         overlay="none"
+        currentStep={2}
+        totalSteps={2}
       />
     );
   }
@@ -254,6 +260,8 @@ function ClientContent() {
         loading={loading}
         showAddressWarning={!address || !f1}
         imageType="document"
+        currentStep={2}
+        totalSteps={2}
       />
     );
   }
