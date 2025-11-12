@@ -45,7 +45,7 @@ export default function CameraPreview({
 
           <div className='mb-8 text-center'>
             <h1 className='text-2xl md:text-3xl font-bold mb-3' style={{color: 'var(--text-primary)'}}>Revisa tu foto</h1>
-            <p className='text-base md:text-lg leading-relaxed' style={{color: 'var(--text-secondary)'}}>Verifica que tu rostro se vea claramente, caso contrario tome otra foto</p>
+            <p className='text-base md:text-lg leading-relaxed' style={{color: 'var(--text-secondary)'}}>Verifica que tu DNI se vea claramente, caso contrario tome otra foto</p>
           </div>
 
           {/* Imagen de preview */}
