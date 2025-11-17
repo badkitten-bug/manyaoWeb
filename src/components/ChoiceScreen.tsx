@@ -1,5 +1,5 @@
 "use client";
-import { ScanFace, ContactRound, IdCard, SmartphoneNfc, ShieldCheck } from "lucide-react";
+import { ScanFace, ContactRound, IdCard, SmartphoneNfc } from "lucide-react";
 import Logo from "./Logo";
 import ProgressIndicator from "./ProgressIndicator";
 import ThemeToggle from "./ThemeToggle";

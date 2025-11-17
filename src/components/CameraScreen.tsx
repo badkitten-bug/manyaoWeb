@@ -4,7 +4,6 @@ import WebCamera from "./WebCamera";
 import Logo from "./Logo";
 import ProgressIndicator from "./ProgressIndicator";
 import ThemeToggle from "./ThemeToggle";
-import { Camera } from "lucide-react";
 import { SITE_URL } from "@/lib/env";
 
 interface CameraScreenProps {
