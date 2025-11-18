@@ -18,6 +18,7 @@ import ThemeToggle from '@/components/ThemeToggle';
 import ProgressIndicator from '@/components/ProgressIndicator';
 import Logo from '@/components/Logo';
 
+
 // Función para limpiar mensajes del API
 const cleanApiMessage = (message: string): string => {
   if (!message) return 'Error desconocido';
@@ -295,13 +296,36 @@ function ClientContent() {
         try {
           setLinkValid(null);
           // Para el código 03, usamos el KEY como value2 y thirdValue como value3
+          console.log("PARAMS");
+          const [_id, _dni, _key] = idParam.split(":");
+          console.log(idParam);
           const validationResp = await validateLinkAccess({ 
-            code: '03', 
-            dni: qrKey, // En código 03, el KEY actúa como ID del documento
-            key: thirdValue // El tercer valor es la firma/0x1234...
+            code: _id, 
+            dni: _dni, 
+            key: _key 
           });
-          const isValid = validationResp?.isValid === true || validationResp?.response?.isValid === true;
-          
+          console.log(validationResp?.response?.options)
+          const options_ = validationResp?.response?.options;
+          const normalizeBits = (bits: string): string => {
+          const clean = bits.replace(/[^01]/g, "");
+          return (clean + "00000").slice(0, 5);
+         };
+
+         const resultado = normalizeBits(options_);
+         localStorage.setItem("flags", "111");
+
+         console.log("RESULT:");
+         console.log(result)
+
+          const apiCode = validationResp?.code;
+          const isValid = validationResp?.response?.isvalid === true || validationResp?.response?.isValid === true;
+          if (apiCode !== 200) {
+            setLinkValid(false);
+            setLinkValidationError(`Error de validación. Código: ${apiCode}`);
+            setInitDone(true);
+            return;
+          }
+
           if (!isValid) {
             setLinkValid(false);
             setLinkValidationError('Este enlace no tiene acceso válido o ya ha sido utilizado. Por favor, solicita un nuevo enlace.');
@@ -673,15 +697,19 @@ function ClientContent() {
       <ChoiceScreen
         onChoiceSelected={(selectedChoice) => {
           setChoice(selectedChoice);
+
           if (selectedChoice === 'biometric') {
-            setStep('dni-input'); // PRO: Ir a captura de DNI primero
+            // PRO: Ir a captura de DNI primero
+            setStep('dni-input');
           } else if (selectedChoice === 'cedula') {
-            setStep('manual-data'); // FREE: Ir directamente a datos manuales
+            // FREE: Ir directamente a datos manuales
+            setStep('manual-data');
           }
         }}
       />
     );
   }
+
 
   if (step === 'photo') {
     console.log('[DEBUG] Mostrando CameraScreen (Paso 3: Captura de foto)');

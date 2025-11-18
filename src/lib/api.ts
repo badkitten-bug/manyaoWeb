@@ -173,4 +173,3 @@ export async function validateLinkAccess({ code, dni, key }: { code: string; dni
   return postExec(PROC_VALIDATE_LINK_ACCESS, params);
 }
 
-

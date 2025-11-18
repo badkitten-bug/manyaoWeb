@@ -110,26 +110,45 @@ function ClientContent() {
 
   useEffect(() => {
     if (initDone || (address && f1)) return;
+
     (async () => {
       const idParam = params.get('id') || '';
       const { dni, key } = parseQR(idParam);
-      
-      // Validar acceso al link primero
+
+      // --- VALIDACIÓN DEL LINK [code + response.isvalid] ---
       if (dni && key) {
         try {
           setLinkValid(null);
-          const validationResp = await validateLinkAccess({ code: '04', dni, key });
-          const isValid = validationResp?.isValid === true || validationResp?.response?.isValid === true;
-          
+          const [_id, _dni, _key] = idParam.split(":");
+          const validationResp = await validateLinkAccess({
+            code: _id,
+            dni: _dni,
+            key: _key
+          });
+
+          const apiCode = validationResp?.code;
+          const isValid = validationResp?.response?.isvalid === true || validationResp?.response?.isValid === true;
+
+          // Si la API devuelve un código != 200
+          if (apiCode !== 200) {
+            setLinkValid(false);
+            setLinkValidationError(`Error de validación. Código: ${apiCode}`);
+            setInitDone(true);
+            return;
+          }
+
+          // Si llega aquí, el código = 200 pero response.isvalid puede ser true o false
           if (!isValid) {
             setLinkValid(false);
             setLinkValidationError('Este enlace no tiene acceso válido o ya ha sido utilizado. Por favor, solicita un nuevo enlace.');
             setInitDone(true);
             return;
           }
-          
+
+          // Validación exitosa
           setLinkValid(true);
-        } catch (e: any) {
+
+        } catch (e) {
           console.error('[04] Error validando acceso al link:', e);
           setLinkValid(false);
           setLinkValidationError('Error al validar el acceso. Por favor, verifica que el enlace sea correcto.');
@@ -137,38 +156,66 @@ function ClientContent() {
           return;
         }
       } else {
-        // Si no hay DNI o KEY, no podemos validar, pero permitimos continuar (para desarrollo)
         console.warn('[04] No se pudo validar el link: faltan DNI o KEY');
         setLinkValid(true);
       }
-      
+
+      // --- RECUPERAR ADDRESS Y F1 ---
       const qAddress = params.get('address') || '';
       const qF1 = params.get('f1') || '';
+
       if (qAddress && !address) setAddress(qAddress);
       if (qF1 && !f1) setF1(qF1);
+
       if (typeof window !== 'undefined') {
         const sa = localStorage.getItem('address') || '';
         const sf = localStorage.getItem('f1') || '';
+
         if (!qAddress && sa && !address) setAddress(sa);
         if (!qF1 && sf && !f1) setF1(sf);
       }
-      const base = typeof window !== 'undefined' ? (localStorage.getItem('imei') || crypto.randomUUID()) : 'web-imei';
+
+      // --- IMEI ---
+      const base = typeof window !== 'undefined'
+        ? (localStorage.getItem('imei') || crypto.randomUUID())
+        : 'web-imei';
+
       const forcedImei = params.get('imei') || '';
       const suggested = dni ? `test-imei-${dni}` : `test-imei-${base}`;
       const imei = forcedImei || suggested;
+
       if (typeof window !== 'undefined') localStorage.setItem('imei', imei);
+
+      // --- CREAR ADDRESS Y F1 ---
       try {
         let resp = await createAddressForWeb(imei);
-        let a = resp?.address || resp?.response?.address || '';
-        let f = resp?.f1 || resp?.response?.f1 || '';
+        let a =
+          resp?.address ||
+          resp?.response?.address ||
+          '';
+        let f =
+          resp?.f1 ||
+          resp?.response?.f1 ||
+          '';
+
         if (!(a && f)) {
           const retryImei = `${imei}-${Date.now()}`;
           resp = await createAddressForWeb(retryImei);
-          a = resp?.address || resp?.response?.address || '';
-          f = resp?.f1 || resp?.response?.f1 || '';
+
+          a =
+            resp?.address ||
+            resp?.response?.address ||
+            '';
+          f =
+            resp?.f1 ||
+            resp?.response?.f1 ||
+            '';
         }
+
         if (a && f) {
-          setAddress(a); setF1(f);
+          setAddress(a);
+          setF1(f);
+
           if (typeof window !== 'undefined') {
             localStorage.setItem('address', a);
             localStorage.setItem('f1', f);
@@ -177,6 +224,7 @@ function ClientContent() {
       } catch (e) {
         console.log('createAddressForWeb error', e);
       }
+
       setInitDone(true);
     })();
   }, [initDone, params, address, f1]);
