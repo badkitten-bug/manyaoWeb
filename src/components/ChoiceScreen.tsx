@@ -7,6 +7,8 @@ import ThemeToggle from "./ThemeToggle";
 
 interface ChoiceScreenProps {
   onChoiceSelected: (choice: 'biometric' | 'cedula') => void;
+  setStep: (step: string) => void; // 👈 agregado
+
 }
 
 export default function ChoiceScreen({ onChoiceSelected }: ChoiceScreenProps) {
@@ -69,7 +71,9 @@ export default function ChoiceScreen({ onChoiceSelected }: ChoiceScreenProps) {
             )}
 
             {flags[1] === "1" && (
-              <button onClick={() => onChoiceSelected('biometric')} className='w-full p-4 border-2 border-[#187773] rounded-lg hover:bg-[#187773] hover:text-white transition-colors group bg-white relative'>
+              <button 
+              onClick={() => onChoiceSelected('biometric')} 
+              className='w-full p-4 border-2 border-[#187773] rounded-lg hover:bg-[#187773] hover:text-white transition-colors group bg-white relative'>
                 <div className='absolute -top-2 -right-2'>
                   <span className='bg-gradient-to-r from-blue-400 to-blue-600 text-blue-900 px-2 py-1 rounded-full text-xs font-bold shadow-md'>
                     🔥 PRO
@@ -94,23 +98,24 @@ export default function ChoiceScreen({ onChoiceSelected }: ChoiceScreenProps) {
             )}
 
             {flags[2] === "1" && (
-              <button disabled className='w-full p-4 border-2 border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed opacity-60 relative'>
+              <button
+              className='w-full p-4 border-2 border-[#187773] rounded-lg hover:bg-[#187773] hover:text-white transition-colors group bg-white relative'>
                 <div className='absolute -top-2 -right-2'>
                   <span className='bg-gradient-to-r from-blue-400 to-blue-600 text-blue-900 px-2 py-1 rounded-full text-xs font-bold shadow-md'>
                     🔥 PRO
                   </span>
                 </div>
                 <div className='flex items-center space-x-4'>
-                  <div className='p-3 bg-gray-300 rounded-full'>
-                    <ContactRound size={24} className='text-blue-500' />
+                  <div className='p-3 bg-[#187773] rounded-full group-hover:bg-white transition-colors'>
+                    <ContactRound size={24} className='text-white group-hover:text-[#187773]' />
                   </div>
 
                   <div className='text-left'>
-                    <h3 className='font-bold text-lg text-gray-500'>
+                    <h3 className='font-bold text-lg text-[#187773] group-hover:text-white transition-colors'>
                       Validación con DNI
                     </h3>
-                    <p className='text-sm text-gray-400'>
-                      Su rostro será comparado con el que se encuentra en su DNI
+                    <p className='text-sm text-gray-600 group-hover:text-white transition-colors'>
+                      Su rostro será comparado con el de su DNI.
                     </p>
                   </div>
                 </div>
@@ -124,7 +129,6 @@ export default function ChoiceScreen({ onChoiceSelected }: ChoiceScreenProps) {
     </main>
   );
 }
-
 
             {/* Opción 4: eDNI - PREMIUM (disabled) */}
 {/*            

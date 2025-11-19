@@ -312,7 +312,7 @@ function ClientContent() {
          };
 
          const resultado = normalizeBits(options_);
-         localStorage.setItem("flags", "111");
+         localStorage.setItem("flags", resultado);
 
          console.log("RESULT:");
          console.log(result)
