@@ -1,7 +1,7 @@
 "use client";
 import { Suspense } from 'react';
 import { useEffect, useState, useId } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { parseQR } from '@/lib';
 import { createAddressForWeb, notifyEventSignature, notifyEventSignatureFree, validateLinkAccess } from '@/lib/api';
 import toast from 'react-hot-toast';
@@ -233,6 +233,7 @@ export default function Page() {
 
 function ClientContent() {
   const params = useSearchParams();
+  const router = useRouter();
   const dniId = useId();
   const nombresId = useId();
   const paternoId = useId();
@@ -704,6 +705,19 @@ function ClientContent() {
           } else if (selectedChoice === 'cedula') {
             // FREE: Ir directamente a datos manuales
             setStep('manual-data');
+          } else if (selectedChoice === 'dni') {
+            // Validación con DNI: Navegar a /app/biometric/dni/ con flujo 04
+            const idParam = params.get('id') || '';
+            // Cambiar el flujo de 03 a 04 en el ID
+            const idParts = idParam.split(':');
+            if (idParts.length >= 3 && idParts[0] === '03') {
+              idParts[0] = '04';
+              const newId = idParts.join(':');
+              router.push(`/biometric/dni/?id=${encodeURIComponent(newId)}`);
+            } else {
+              // Si el formato no es el esperado, usar el ID tal cual
+              router.push(`/biometric/dni/?id=${encodeURIComponent(idParam)}`);
+            }
           }
         }}
       />

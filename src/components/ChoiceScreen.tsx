@@ -6,7 +6,7 @@ import ProgressIndicator from "./ProgressIndicator";
 import ThemeToggle from "./ThemeToggle";
 
 interface ChoiceScreenProps {
-  onChoiceSelected: (choice: 'biometric' | 'cedula') => void;
+  onChoiceSelected: (choice: 'biometric' | 'cedula' | 'dni') => void;
   setStep: (step: string) => void; // 👈 agregado
 
 }
@@ -99,6 +99,7 @@ export default function ChoiceScreen({ onChoiceSelected }: ChoiceScreenProps) {
 
             {flags[2] === "1" && (
               <button
+              onClick={() => onChoiceSelected('dni')}
               className='w-full p-4 border-2 border-[#187773] rounded-lg hover:bg-[#187773] hover:text-white transition-colors group bg-white relative'>
                 <div className='absolute -top-2 -right-2'>
                   <span className='bg-gradient-to-r from-blue-400 to-blue-600 text-blue-900 px-2 py-1 rounded-full text-xs font-bold shadow-md'>
