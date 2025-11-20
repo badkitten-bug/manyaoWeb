@@ -3,7 +3,7 @@ import { Suspense } from 'react';
 import { useEffect, useState, useId } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { parseQR } from '@/lib';
-import { createAddressForWeb, notifyEventSignature, notifyEventSignatureFree, validateLinkAccess } from '@/lib/api';
+import { createAddressForWeb, notifyEventSignature, notifyEventSignatureFree, getFlowOptions, validateDNIWithPhoto04 } from '@/lib/api';
 import toast from 'react-hot-toast';
 
 // Componentes reutilizables
@@ -78,6 +78,15 @@ interface ApiResponse {
     };
   };
 }
+
+// Opciones por defecto del flujo 03 mientras el API de opciones no responda bien
+const DEFAULT_FLOW03_OPTIONS = {
+  simple: true,   // Validación simple
+  reniec: false,  // RENIEC desactivado por defecto
+  dni: true,      // Validación con DNI activa
+  eDni: false,
+  nfc: false,
+};
 
 // Función para determinar el resultado basado en la respuesta del API
 const determineValidationResult = (resp: ApiResponse, documentId?: string) => {
@@ -236,16 +245,39 @@ function ClientContent() {
   const nombresId = useId();
   const paternoId = useId();
   const maternoId = useId();
-  const [step, setStep] = useState<'intro' | 'dni-input' | 'choice' | 'photo' | 'photo-preview' | 'manual-data' | 'signature' | 'result'>('intro');
+  const [step, setStep] = useState<
+    | 'intro'
+    | 'dni-input'
+    | 'choice'
+    | 'photo'
+    | 'photo-preview'
+    | 'manual-data'
+    | 'dni04-face'
+    | 'dni04-face-preview'
+    | 'dni04-doc'
+    | 'dni04-doc-preview'
+    | 'signature'
+    | 'result'
+  >('intro');
   const [dni, setDni] = useState<string>('');
-  const [choice, setChoice] = useState<'biometric' | 'cedula' | null>(null);
+  const [choice, setChoice] = useState<'biometric' | 'cedula' | 'dni' | null>(null);
   const [photo, setPhoto] = useState<string | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  // Fotos específicas para la validación tipo flujo 04 (selfie + DNI)
+  const [dni04PhotoFace, setDni04PhotoFace] = useState<string | null>(null);
+  const [dni04PhotoDni, setDni04PhotoDni] = useState<string | null>(null);
   const [signature, setSignature] = useState<string | null>(null);
   const [signatureVector, setSignatureVector] = useState<string>('');
   const [address, setAddress] = useState<string>('');
   const [f1, setF1] = useState<string>('');
   const [qrKey, setQrKey] = useState<string>('');
+  const [availableOptions, setAvailableOptions] = useState<{
+    simple?: boolean;
+    reniec?: boolean;
+    dni?: boolean;
+    eDni?: boolean;
+    nfc?: boolean;
+  }>(DEFAULT_FLOW03_OPTIONS);
   
   // Estados para versión FREE (datos manuales)
   const [manualNames, setManualNames] = useState<string>(''); // Nombres
@@ -259,7 +291,6 @@ function ClientContent() {
   // Estado para el documento PDF
   const [documentId, setDocumentId] = useState<string>('');
   const [documentUrl, setDocumentUrl] = useState<string>('');
-  
   const [result, setResult] = useState<{
     success: boolean;
     message: string;
@@ -281,6 +312,44 @@ function ClientContent() {
     };
   } | null>(null);
 
+  // Ejecuta la validación DNI (flujo 04) dentro del flujo 03.
+  async function runDni04Validation() {
+    if (!dni04PhotoFace || !dni04PhotoDni) return;
+    setLoading(true);
+    const loadingToast = toast.loading('Validando tu identidad con DNI...');
+
+    try {
+      const email = 'web@correogenerado.com';
+      const resp = await validateDNIWithPhoto04({
+        photoFace: dni04PhotoFace,
+        photoDNI: dni04PhotoDni,
+        email,
+        f1: f1 || 'f1',
+        address: address || 'addr',
+      } as any);
+
+      const overall = !!(resp as any)?.response?.json?.overallStatus;
+
+      toast.dismiss(loadingToast);
+
+      if (overall) {
+        toast.success('¡Validación con DNI exitosa! Ahora puedes firmar el documento.');
+        // Continuar al paso de firma dentro del mismo flujo 03
+        setStep('signature');
+      } else {
+        const backendMessage =
+          (resp as any)?.response?.json?.detail ||
+          (resp as any)?.response?.message ||
+          'No se pudo validar tu identidad con DNI.';
+        toast.error(cleanApiMessage(String(backendMessage)));
+      }
+    } catch (e: any) {
+      toast.dismiss(loadingToast);
+      toast.error(cleanApiMessage(e?.message) || 'Error de red o servidor durante la validación con DNI.');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
     if (initDone || (address && f1)) return;
@@ -288,39 +357,34 @@ function ClientContent() {
       const idParam = params.get('id') || '';
       const { key: qrKey, thirdValue } = parseQR(idParam); // En flujo 03, el segundo parámetro es 'key', no 'dni'
       setQrKey(qrKey || '');
-      
-      // Validar acceso al link primero
-      // Para código 03: value1=03, value2=KEY (ID del documento), value3=thirdValue (firma/0x1234...)
+
+      // Obtener opciones de flujo (qué métodos mostrar) usando el proceso de opciones
+      // value1 = "03" (flujo firma), value2 = qrKey, value3 = thirdValue (firma/0x1234...)
       if (qrKey && thirdValue) {
         try {
-          setLinkValid(null);
-          // Para el código 03, usamos el KEY como value2 y thirdValue como value3
-          const validationResp = await validateLinkAccess({ 
-            code: '03', 
-            dni: qrKey, // En código 03, el KEY actúa como ID del documento
-            key: thirdValue // El tercer valor es la firma/0x1234...
-          });
-          const isValid = validationResp?.isValid === true || validationResp?.response?.isValid === true;
-          
-          if (!isValid) {
-            setLinkValid(false);
-            setLinkValidationError('Este enlace no tiene acceso válido o ya ha sido utilizado. Por favor, solicita un nuevo enlace.');
-            setInitDone(true);
-            return;
+          const optionsResp = await getFlowOptions({ code: '03', value2: qrKey, value3: thirdValue });
+          const rawOptions: string | undefined =
+            optionsResp?.response?.options ||
+            optionsResp?.options;
+
+          if (typeof rawOptions === 'string' && rawOptions.length > 0) {
+            // Mapear posiciones: 1=simple, 2=reniec, 3=dni, 4=eDni, 5=nfc
+            const flags = rawOptions.padEnd(5, '0');
+            setAvailableOptions({
+              simple: flags[0] === '1',
+              reniec: flags[1] === '1',
+              dni: flags[2] === '1',
+              eDni: flags[3] === '1',
+              nfc: flags[4] === '1',
+            });
+          } else {
+            // Si no hay options válidas, usar fallback
+            setAvailableOptions(DEFAULT_FLOW03_OPTIONS);
           }
-          
-          setLinkValid(true);
-        } catch (e: unknown) {
-          console.error('[03] Error validando acceso al link:', e);
-          setLinkValid(false);
-          setLinkValidationError('Error al validar el acceso. Por favor, verifica que el enlace sea correcto.');
-          setInitDone(true);
-          return;
+        } catch (e) {
+          console.warn('[03] No se pudieron obtener opciones de flujo, usando opciones por defecto.', e);
+          setAvailableOptions(DEFAULT_FLOW03_OPTIONS);
         }
-      } else {
-        // Si no hay KEY o thirdValue, no podemos validar, pero permitimos continuar (para desarrollo)
-        console.warn('[03] No se pudo validar el link: faltan KEY o thirdValue');
-        setLinkValid(true);
       }
       
       // Extraer el ID del documento desde la URL
@@ -413,36 +477,55 @@ function ClientContent() {
       const email = 'web@correogenerado.com';
       
       // Determinar el nombre a enviar según el tipo de validación
-      // Para FREE: concatenar nombres + apellido paterno + apellido materno en mayúsculas (como RENIEC)
-      const userName = choice === 'biometric' 
-        ? 'Usuario' // PREMIUM: Backend obtendrá el nombre real
-        : `${manualNames} ${manualPaternalSurname} ${manualMaternalSurname}`.trim().toUpperCase(); // FREE: Concatenado en mayúsculas
+      // - Biometric: backend obtendrá o inferirá el nombre real
+      // - DNI / FREE: usar nombres + apellidos ingresados manualmente en mayúsculas
+      const userName =
+        choice === 'biometric'
+          ? 'Usuario'
+          : `${manualNames} ${manualPaternalSurname} ${manualMaternalSurname}`.trim().toUpperCase();
       
+      // Elegir qué foto enviar al backend según el flujo:
+      // - Biometric: usar la selfie capturada en este flujo
+      // - DNI: usar la selfie del subflujo 04 (dni04PhotoFace)
+      // - FREE: no se envía foto (usa proceso FREE sin foto)
+      const photoForSignature =
+        choice === 'biometric'
+          ? photo
+          : choice === 'dni'
+          ? dni04PhotoFace
+          : null;
+
       // Debug: Verificar datos antes de enviar
       console.log('[DEBUG] Datos a enviar al API:', {
-        version: choice === 'biometric' ? 'PREMIUM' : 'FREE',
-        hasPhoto: !!photo,
-        photoLength: photo?.length || 0,
+        version: choice === 'biometric' || choice === 'dni' ? 'PREMIUM' : 'FREE',
+        hasPhoto: !!photoForSignature,
+        photoLength: photoForSignature?.length || 0,
         hasSignature: !!signature,
         signatureLength: signature?.length || 0,
         hasSignatureVector: !!signatureVector,
         signatureVectorLength: signatureVector?.length || 0,
         signatureIsBase64: signature?.startsWith('data:image/png;base64,'),
-        photoIsBase64: photo?.startsWith('data:image/jpeg;base64,'),
+        photoIsBase64: photoForSignature?.startsWith('data:image/jpeg;base64,'),
         dni: dni,
         userName: userName,
         email: email,
         f1: f1,
         address: address,
         qrKey: qrKey,
-        note: choice === 'biometric' ? 'Backend reemplazará "Usuario" con nombre real' : 'Datos manuales del usuario concatenados en mayúsculas'
+        note:
+          choice === 'biometric' || choice === 'dni'
+            ? 'PREMIUM: backend usará foto y DNI para mostrar quién firma'
+            : 'FREE: datos manuales del usuario concatenados en mayúsculas'
       });
       
       // Llamar a la API correcta según el tipo de flujo
       console.log('[DEBUG] Enviando datos al API...');
-      const resp = choice === 'biometric' 
+      const isPremiumSignature = choice === 'biometric' || choice === 'dni';
+      const resp = isPremiumSignature
         ? await notifyEventSignature({
-            photo: photo || 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/2wBDAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwA/8A8A', // Foto o placeholder
+            photo:
+              photoForSignature ||
+              'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/2wBDAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwA/8A8A', // Foto o placeholder
             email,
             dni,
             f1: f1 || 'f1',
@@ -495,13 +578,24 @@ function ClientContent() {
           message: successMessage,
           detail: {
             dni: validationResult.data?.dni || dni,
-            choice: choice === 'biometric' ? 'Biometría' : 'Cédula de Identidad',
+            choice:
+              choice === 'biometric'
+                ? 'Biometría'
+                : choice === 'dni'
+                ? 'Validación con DNI'
+                : 'Cédula de Identidad',
             signatureSent: true,
             key: qrKey, // Agregar el QR key para mostrar el ID del documento
             // Datos del usuario validado
-            names: validationResult.data?.names || (choice === 'cedula' ? manualNames : ''),
-            paternal_surname: validationResult.data?.paternal_surname || (choice === 'cedula' ? manualPaternalSurname : ''),
-            maternal_surname: validationResult.data?.maternal_surname || (choice === 'cedula' ? manualMaternalSurname : ''),
+            names:
+              validationResult.data?.names ||
+              (choice === 'cedula' || choice === 'dni' ? manualNames : ''),
+            paternal_surname:
+              validationResult.data?.paternal_surname ||
+              (choice === 'cedula' || choice === 'dni' ? manualPaternalSurname : ''),
+            maternal_surname:
+              validationResult.data?.maternal_surname ||
+              (choice === 'cedula' || choice === 'dni' ? manualMaternalSurname : ''),
             // Mensaje de validación específico (se pasará como mensaje personalizado)
             customValidationMessage: validationResult.data?.validationMessage || '',
             // ID del documento (se pasará como key personalizado)
@@ -540,44 +634,6 @@ function ClientContent() {
       setLoading(false);
       setStep('result');
     }
-  }
-
-  // Mostrar error si el link no es válido
-  if (linkValid === false) {
-    return (
-      <main className="min-h-dvh flex flex-col items-center justify-center gap-6 p-6 bg-[#f5f5f5]">
-        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
-          <div className="mb-4">
-            <svg className="mx-auto h-16 w-16 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Acceso no autorizado</h1>
-          <p className="text-gray-600 mb-6">{linkValidationError || 'Este enlace no tiene acceso válido o ya ha sido utilizado.'}</p>
-          <button
-            onClick={() => window.location.href = '/'}
-            className="w-full bg-[#187773] text-white py-3 px-6 rounded-lg font-semibold hover:bg-[#156663] transition-colors"
-          >
-            Volver al inicio
-          </button>
-        </div>
-      </main>
-    );
-  }
-
-  // Mostrar loading mientras se valida el link
-  if (linkValid === null) {
-    return (
-      <main className="min-h-dvh flex flex-col items-center justify-center gap-6 p-6 bg-[#f5f5f5]">
-        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
-          <div className="mb-4">
-            <div className="mx-auto h-12 w-12 border-4 border-[#187773] border-t-transparent rounded-full animate-spin"></div>
-          </div>
-          <h1 className="text-xl font-semibold text-gray-900 mb-2">Validando acceso...</h1>
-          <p className="text-gray-600">Por favor espera mientras verificamos el enlace.</p>
-        </div>
-      </main>
-    );
   }
 
   if (step === 'intro') {
@@ -657,9 +713,9 @@ function ClientContent() {
           if (choice === 'biometric') {
             console.log('[DEBUG] Flujo PRO: yendo a captura de foto');
             setStep('photo'); // PRO: Ir a captura de foto
-          } else if (choice === 'cedula') {
-            console.log('[DEBUG] Flujo FREE: yendo a datos manuales');
-            setStep('manual-data'); // FREE: Ir a datos manuales
+          } else if (choice === 'cedula' || choice === 'dni') {
+            console.log('[DEBUG] Flujo FREE/DNI: yendo a datos manuales (nombres)');
+            setStep('manual-data'); // FREE/DNI: Ir a datos manuales (nombres)
           }
         }}
         onBack={() => setStep('choice')}
@@ -671,12 +727,16 @@ function ClientContent() {
   if (step === 'choice') {
     return (
       <ChoiceScreen
+        availableOptions={availableOptions}
         onChoiceSelected={(selectedChoice) => {
           setChoice(selectedChoice);
           if (selectedChoice === 'biometric') {
             setStep('dni-input'); // PRO: Ir a captura de DNI primero
           } else if (selectedChoice === 'cedula') {
             setStep('manual-data'); // FREE: Ir directamente a datos manuales
+          } else if (selectedChoice === 'dni') {
+            // Para DNI también pedimos primero el DNI y luego vamos al subflujo 04
+            setStep('dni-input');
           }
         }}
       />
@@ -696,6 +756,89 @@ function ClientContent() {
           setStep('photo-preview');
         }}
         onBack={() => setStep('dni-input')}
+      />
+    );
+  }
+
+  // Flujo de validación DNI (similar al flujo 04) integrado en el flujo 03
+  if (step === 'dni04-face') {
+    return (
+      <CameraScreen
+        title="Validación con DNI"
+        subtitle="Paso 1 de 2: Toma una selfie clara"
+        description="Después de esta selfie, necesitarás tomar una foto de tu DNI."
+        onCapture={(data) => {
+          setDni04PhotoFace(data);
+          setStep('dni04-face-preview');
+        }}
+        facingMode="user"
+        autoCaptureEnabled={true}
+        overlay="circle"
+        mirror={true}
+        currentStep={1}
+        totalSteps={2}
+      />
+    );
+  }
+
+  if (step === 'dni04-face-preview' && dni04PhotoFace) {
+    return (
+      <CameraPreview
+        title="Validación con DNI"
+        subtitle="Paso 1 de 2: Revisa tu selfie"
+        imageSrc={dni04PhotoFace}
+        imageAlt="preview-face-dni04"
+        onRetake={() => {
+          setDni04PhotoFace(null);
+          setStep('dni04-face');
+        }}
+        onContinue={() => setStep('dni04-doc')}
+        continueText="Continuar"
+        imageType="selfie"
+        currentStep={1}
+        totalSteps={2}
+      />
+    );
+  }
+
+  if (step === 'dni04-doc') {
+    return (
+      <CameraScreen
+        title="Validación con DNI"
+        subtitle="Paso 2 de 2: Toma una foto de tu DNI"
+        description="Asegúrate de que el DNI esté bien iluminado y se vea claramente."
+        onCapture={(data) => {
+          setDni04PhotoDni(data);
+          setStep('dni04-doc-preview');
+        }}
+        facingMode="environment"
+        autoCaptureEnabled={false}
+        overlay="none"
+        currentStep={2}
+        totalSteps={2}
+      />
+    );
+  }
+
+  if (step === 'dni04-doc-preview' && dni04PhotoDni) {
+    return (
+      <CameraPreview
+        title="Validación con DNI"
+        subtitle="Paso 2 de 2: Revisa la foto de tu DNI"
+        imageSrc={dni04PhotoDni}
+        imageAlt="preview-dni04"
+        onRetake={() => {
+          setDni04PhotoDni(null);
+          setStep('dni04-doc');
+        }}
+        onContinue={runDni04Validation}
+        continueText="Validar y continuar a firma"
+        continueDisabled={loading || !address || !f1}
+        loading={loading}
+        showAddressWarning={!address || !f1}
+        imageType="document"
+        currentStep={2}
+        totalSteps={2}
       />
     );
   }
@@ -831,7 +974,14 @@ function ClientContent() {
             <div className="space-y-4 mb-6">
               <button
                 type="button"
-                onClick={() => setStep('signature')}
+                onClick={() => {
+                  // Para flujo DNI, después de nombres vamos a la validación con fotos (subflujo 04)
+                  if (choice === 'dni') {
+                    setStep('dni04-face');
+                  } else {
+                    setStep('signature');
+                  }
+                }}
                 disabled={!dni.trim() || !manualNames.trim() || !manualPaternalSurname.trim() || !manualMaternalSurname.trim()}
                 className="w-full py-4 rounded-2xl font-bold text-lg transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                 style={{
@@ -901,7 +1051,15 @@ function ClientContent() {
           setSignatureVector(vectorData);
         }}
         onContinue={sendSignature}
-        onBack={() => setStep(choice === 'biometric' ? 'photo-preview' : 'manual-data')}
+        onBack={() =>
+          setStep(
+            choice === 'biometric'
+              ? 'photo-preview'
+              : choice === 'dni'
+              ? 'dni04-doc-preview'
+              : 'manual-data'
+          )
+        }
         continueDisabled={loading}
         loading={loading}
         method={choice || 'biometric'}

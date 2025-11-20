@@ -5,12 +5,26 @@ import ProgressIndicator from "./ProgressIndicator";
 import ThemeToggle from "./ThemeToggle";
 
 interface ChoiceScreenProps {
-  onChoiceSelected: (choice: 'biometric' | 'cedula') => void;
+  onChoiceSelected: (choice: 'biometric' | 'cedula' | 'dni') => void;
+  // Opciones que vienen del backend (campo "options"), para mostrar/ocultar métodos
+  availableOptions?: {
+    simple?: boolean;   // Validación simple (FREE)
+    reniec?: boolean;   // Validación con RENIEC (biométrica)
+    dni?: boolean;      // Validación con DNI
+    eDni?: boolean;     // Validación con eDNI
+    nfc?: boolean;      // Validación con NFC
+  };
 }
 
 export default function ChoiceScreen({
   onChoiceSelected,
+  availableOptions,
 }: ChoiceScreenProps) {
+  const showSimple = availableOptions?.simple ?? true;
+  const showReniec = availableOptions?.reniec ?? true;
+  const showDni = availableOptions?.dni ?? true;
+  const showEDni = availableOptions?.eDni ?? true;
+  const showNfc = availableOptions?.nfc ?? true;
   return (
     <main className='min-h-dvh flex flex-col'>
       <ThemeToggle />
@@ -29,6 +43,7 @@ export default function ChoiceScreen({
 
           <div className='space-y-4 mb-6'>
             {/* Opción 1: Sin validación - FREE */}
+            {showSimple && (
             <button
               type='button'
               onClick={() => onChoiceSelected('cedula')}
@@ -51,8 +66,10 @@ export default function ChoiceScreen({
               </div>
             </div>
           </button>
+            )}
 
           {/* Opción 2: Validación con RENIEC - PRO */}
+          {showReniec && (
           <button
             type='button'
             onClick={() => onChoiceSelected('biometric')}
@@ -75,12 +92,14 @@ export default function ChoiceScreen({
               </div>
             </div>
           </button>
+          )}
 
           {/* Opción 3: Validación con DNI - PRO */}
+          {showDni && (
           <button
             type='button'
-            disabled
-            className='w-full p-4 border-2 border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed opacity-60 relative'
+            onClick={() => onChoiceSelected('dni')}
+            className='w-full p-4 border-2 border-[#187773] rounded-lg hover:bg-[#187773] hover:text-white transition-colors group bg-white relative'
           >
             <div className='absolute -top-2 -right-2'>
               <span className='bg-gradient-to-r from-blue-400 to-blue-600 text-blue-900 px-2 py-1 rounded-full text-xs font-bold shadow-md'>
@@ -88,19 +107,21 @@ export default function ChoiceScreen({
               </span>
             </div>
             <div className='flex items-center space-x-4'>
-               <div className='p-3 bg-gray-300 rounded-full'>
-                 <ContactRound size={24} className='text-blue-500' />
+              <div className='p-3 bg-[#187773] rounded-full group-hover:bg-white transition-colors'>
+                 <ContactRound size={24} className='text-white group-hover:text-[#187773]' />
                </div>
               <div className='text-left'>
-                <h3 className='font-bold text-lg text-gray-500'>Validación con DNI</h3>
-                <p className='text-sm text-gray-400'>
-                  Su rostro será comparado con el que se encuentra en su DNI
+                <h3 className='font-bold text-lg text-[#187773] group-hover:text-white transition-colors'>Validación con DNI</h3>
+                <p className='text-sm text-gray-600 group-hover:text-white transition-colors'>
+                  Selfie y foto de DNI para validar tu identidad
                 </p>
               </div>
             </div>
           </button>
+          )}
 
           {/* Opción 4: Validación con eDNI - PREMIUM */}
+          {showEDni && (
           <button
             type='button'
             disabled
@@ -123,8 +144,10 @@ export default function ChoiceScreen({
               </div>
             </div>
           </button>
+          )}
 
           {/* Opción 5: Validación con NFC - PREMIUM */}
+          {showNfc && (
           <button
             type='button'
             disabled
@@ -147,6 +170,7 @@ export default function ChoiceScreen({
               </div>
             </div>
           </button>
+          )}
           </div>
 
           {/* Footer */}

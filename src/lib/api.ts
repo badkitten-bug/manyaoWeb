@@ -1,4 +1,4 @@
-import { API_KEY, SCOPE, PROC_NOTIFY_EVENT, PROC_NOTIFY_SIGNATURE, PROC_NOTIFY_SIGNATURE_FREE, PROC_VALIDATE_DNI_WITH_PHOTO, PROC_CREATE_ADDRESS, PROC_VALIDATE_LINK_ACCESS, PROXY_PHP_URL } from './env';
+import { API_KEY, SCOPE, PROC_NOTIFY_EVENT, PROC_NOTIFY_SIGNATURE, PROC_NOTIFY_SIGNATURE_FREE, PROC_VALIDATE_DNI_WITH_PHOTO, PROC_CREATE_ADDRESS, PROC_FLOW_OPTIONS, PROXY_PHP_URL } from './env';
 
 type Param = { name: string; value: string };
 
@@ -158,19 +158,19 @@ export async function notifyEventSignatureFree({
 }
 
 /**
- * Valida si un link generado tiene acceso válido
- * @param code - Código del flujo (04, 05, etc.)
- * @param dni - DNI del usuario
- * @param key - KEY/Firma del QR (0x1234...)
- * @returns Promise con { isValid: boolean }
+ * Obtiene las opciones de flujo desde el backend (campo "options", por ejemplo "10100")
+ * value1 = code del flujo (ej: "03")
+ * value2 / value3 = parámetros del link (ej: key, firma, etc.)
  */
-export async function validateLinkAccess({ code, dni, key }: { code: string; dni: string; key: string; }) {
+export async function getFlowOptions({ code, value2, value3 }: { code: string; value2: string; value3: string; }) {
   const params: Param[] = [
-    { name: 'value1', value: code }, // Código del flujo (04, 05)
-    { name: 'value2', value: dni },   // DNI
-    { name: 'value3', value: key },   // KEY/Firma (0x1234...)
+    { name: 'value1', value: code },
+    { name: 'value2', value: value2 },
+    { name: 'value3', value: value3 },
   ];
-  return postExec(PROC_VALIDATE_LINK_ACCESS, params);
+  if (!PROC_FLOW_OPTIONS) {
+    throw new Error('PROC_FLOW_OPTIONS is not configured. Please set NEXT_PUBLIC_FLOW_OPTIONS_PROCESS_ID in your environment.');
+  }
+  const resp = await postExec(PROC_FLOW_OPTIONS, params);
+  return resp;
 }
-
-
